@@ -28,11 +28,13 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.cover,
-                width: 250,
-                color: Colors.white,
+              Center(
+                child: Image.asset(
+                  'assets/images/logog.png',
+                  fit: BoxFit.cover,
+                  width: 200,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),

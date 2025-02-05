@@ -1,245 +1,120 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:pdftoaudio/app/modules/audio_player/controller/audio_controller.dart';
 
-class AudioPlayerScreen extends StatelessWidget {
+class AudioPlayerScreen extends StatefulWidget {
   const AudioPlayerScreen({super.key});
+
+  @override
+  State<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
+}
+
+class _AudioPlayerScreenState extends State<AudioPlayerScreen>
+    with SingleTickerProviderStateMixin {
+  final _audioController = Get.find<AudioController>();
+
+  late AnimationController _controller;
+  RxBool isPlaying = false.obs;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(microseconds: 500),
+    );
+  }
+
+  void _toggleIcon() {
+    if (isPlaying.value) {
+      _audioController.flutterTts.pause();
+      _controller.reverse();
+    } else {
+      _audioController.speakText(text: _audioController.pdfText.value);
+      _controller.forward();
+    }
+    isPlaying.value = !isPlaying.value;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  final RxDouble _speechRate = 0.5.obs;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Icon(Icons.arrow_back, color: Colors.white, size: 24),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      'Audio Player',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 48), // To balance the space
-              ],
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        leading: const Icon(
+          Icons.arrow_back_ios,
+          color: Colors.white,
+        ),
+        title: const Text(
+          'Audio Player',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
-
-          // Album Art
-          Container(
-            width: 256,
-            height: 256,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              image: const DecorationImage(
-                image: NetworkImage(
-                  'https://cdn.usegalileo.ai/sdxl10/130d4f01-e1a6-4cc8-8968-c2dc75f92032.png',
+        ),
+      ),
+      backgroundColor: Colors.black,
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  _audioController.pdfText.isEmpty
+                      ? ""
+                      : _audioController.pdfText.value,
+                  style: const TextStyle(color: Colors.white),
                 ),
-                fit: BoxFit.cover,
               ),
             ),
-          ),
-
-          // Song Title and Artist
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Text(
-                  'The Lean Startup',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+            Center(
+              child: CircleAvatar(
+                radius: 25,
+                backgroundColor: Colors.white,
+                child: IconButton(
+                  iconSize: 22,
+                  icon: AnimatedIcon(
+                    icon: AnimatedIcons.play_pause,
+                    progress: _controller,
+                    color: Colors.black,
                   ),
+                  onPressed: _toggleIcon,
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Eric Ries',
-                  style: TextStyle(
-                    color: Color(0xFF9CACBA),
-                    fontSize: 16,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-
-          // Progress Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    Container(
-                      height: 4,
-                      width: MediaQuery.of(context).size.width * 0.5,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    Positioned(
-                      left: MediaQuery.of(context).size.width * 0.5 - 8,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '1:17',
-                      style: TextStyle(
-                        color: Color(0xFF9CACBA),
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      '2:23',
-                      style: TextStyle(
-                        color: Color(0xFF9CACBA),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            Obx(
+              () => DropdownButton<double>(
+                value: _speechRate.value,
+                dropdownColor: const Color.fromARGB(255, 27, 27, 27),
+                items: [0.5, 1.0, 1.5, 2.0]
+                    .map((rate) => DropdownMenuItem(
+                          value: rate,
+                          child: Text(
+                            "Speed: ${rate}x",
+                            style: const TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ))
+                    .toList(),
+                onChanged: (value) async {
+                  _speechRate.value = value!;
+                  await _audioController.flutterTts.setSpeechRate(value);
+                },
+              ),
             ),
-          ),
-
-          // Player Controls
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.skip_previous,
-                      color: Colors.white, size: 32),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: const Icon(Icons.fast_rewind,
-                      color: Colors.white, size: 32),
-                  onPressed: () {},
-                ),
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2094F3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.play_arrow,
-                      color: Colors.white, size: 32),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.fast_forward,
-                      color: Colors.white, size: 32),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_next,
-                      color: Colors.white, size: 32),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-          ),
-
-          // Progress Section
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Progress',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      '50%',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: 0.5,
-                  backgroundColor: Color(0xFF3B4954),
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ],
-            ),
-          ),
-
-          // Bottom Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Page 15',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      '9:35/12:22',
-                      style: TextStyle(
-                        color: Color(0xFF9CACBA),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '1.2x',
-                  style: TextStyle(
-                    color: Color(0xFF9CACBA),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
